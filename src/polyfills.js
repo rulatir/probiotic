@@ -60,3 +60,36 @@ export function passthru(command)
         })
     });
 }
+
+/**
+ *
+ * @param {string} str
+ * @param {string|undefined} chars
+ * @return string
+ */
+export function trim(str, chars)
+{
+    if('string' !== typeof chars) chars = " \t\r\n";
+    const characterClass = '[' + quoteCharacterClassMembers(chars) + ']';
+    const leftTrimmer = new RegExp(`^${characterClass}*`);
+    const rightTrimmer = new RegExp(`${characterClass}*$`);
+    return str.replace(leftTrimmer,'').replace(rightTrimmer,'');
+}
+
+function quoteCharacterClassMembers(chars)
+{
+    let result = "";
+    for(let i=0; i<chars.length; ++i) {
+        let c = chars.charAt(i);
+        switch(c) {
+            case '-':
+            case ']':
+            case '\\': result = result + '\\'+c; break;
+            case '\r': result = result + '\\r'; break;
+            case '\n': result = result + '\\n'; break;
+            case '\t': result = result + '\\t'; break;
+            default: result = result + c;
+        }
+    }
+    return result;
+}

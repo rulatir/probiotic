@@ -1,8 +1,4 @@
-#!/bin/env node
+#!/bin/sh
 
-import main from "../src/probiotic";
-
-main(process.argv.length, process.argv.slice()).then(result => process.exit(result)).catch(e => {
-    console.error(e);
-    process.exit(1);
-});
+MY_LOVELY_PLACE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+${MY_LOVELY_PLACE}/../index.js $@

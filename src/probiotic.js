@@ -1,5 +1,9 @@
-import { coerceToArray, dirname, is_file, realpath, file_get_contents, file_put_contents, passthru } from "./polyfills";
-import { IncludeStatement, DefineStatement, TextStatement } from "./statement";
+import {
+    coerceToArray, dirname, is_file, realpath,
+    file_get_contents, file_put_contents, passthru,
+    trim
+} from "./polyfills.js";
+import { IncludeStatement, DefineStatement, TextStatement } from "./statement.js";
 
 
 
@@ -16,7 +20,7 @@ async function processTemplate(templateFilePath, defs, exports)
     for(let statement of statements) {
         if (statement instanceof IncludeStatement) {
             let exported = {};
-            result.push(...(await processInclude(statement, Object.assign({},defs), exported, templateFilePath)));
+            result.push(await processInclude(statement, Object.assign({},defs), exported, templateFilePath));
             defs = Object.assign(defs, exported);
         }
         else if (statement instanceof DefineStatement) {
@@ -141,7 +145,7 @@ async function resolveInclude(templateFilePath, includedFrom)
 async function storeResult(templateFilePath, result)
 {
     const makefilePath = templatePathToMakefilePath(templateFilePath);
-    const coerced = result.map(coerceToArray);
+    const coerced = coerceToArray(result).map(coerceToArray);
     const flattened = [];
     for(let fragment of coerced) flattened.push(...fragment);
     await file_put_contents(makefilePath, flattened.join("\n"));
