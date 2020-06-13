@@ -1,0 +1,8 @@
+#!/bin/env node
+
+import main from "../src/probiotic";
+
+main(process.argv.length, process.argv.slice()).then(result => process.exit(result)).catch(e => {
+    console.error(e);
+    process.exit(1);
+});
