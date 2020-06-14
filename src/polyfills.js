@@ -1,7 +1,7 @@
 import * as _fs from 'fs';
 const fs = _fs.promises;
 import path from 'path';
-import * as child_process from "child_process";
+import passthruImpl from "passthru";
 
 export function coerceToArray(v)
 {
@@ -53,9 +53,8 @@ export async function file_put_contents(path, contents)
 export function passthru(command)
 {
     return new Promise((resolve, reject) => {
-        child_process.exec(command, function(error, stdout, stderr) {
-            if (stdout) console.log(stdout);
-            if (stderr) console.error(stderr);
+        passthruImpl(command, function(error) {
+            if (error) console.error(error);
             resolve(error ? error.code : 0);
         })
     });
