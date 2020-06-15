@@ -28,7 +28,7 @@ async function processTemplate(templateFilePath, defs, exports)
             const expansion = {};
             if (key in defs) expansion[key] = substitute(key, defs);
             defs[key] = substituteRHS(statement.value, expansion);
-            if(statement.export) {
+            if(statement.exported) {
                 exports[key] = defs[key]
             }
         }
@@ -73,8 +73,8 @@ function substitute(text, defs)
     return text.replace(
         /\$\(([_A-Za-z][_0-9A-Za-z]*§)\)/g,
         (match, key) => {
-            if (!(key in defs)) {
-                throw new Error(`Undefined §-variable ${match}`);
+            if (!(match in defs)) {
+                throw new Error(`Undefined §-variable ${key}`);
             }
             return substitute(defs[match], defs)
         }
@@ -101,6 +101,7 @@ async function processInclude(statement, defs, exports, includedFrom)
                 + '/'
                 + computeRelativePath(dirname(includedFrom), dirname(templateFilePath))
             ).replace(/^\.\//,'');
+        await processTemplate(templateFilePath, includeDefs, exports);
         return "include " + templatePathToMakefilePath(statement.file);
     }
     return statement.statement;

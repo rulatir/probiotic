@@ -26,6 +26,7 @@ export class IncludeStatement extends Statement
     {
         super("include");
         this.file = file;
+        this.statement = statement;
     }
 }
 
