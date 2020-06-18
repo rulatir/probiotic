@@ -91,7 +91,8 @@ function substitute(text, defs)
  */
 async function processInclude(statement, defs, exports, includedFrom)
 {
-    const templateFilePath = await resolveInclude(statement.file, includedFrom);
+    const substitutedFilePath = substitute(statement.file, defs);
+    const templateFilePath = await resolveInclude(substitutedFilePath, includedFrom);
     if (null!==templateFilePath) {
         const includeDefs = Object.assign({}, defs);
         includeDefs['$(HERE§)'] = dirname(templateFilePath);
@@ -102,9 +103,9 @@ async function processInclude(statement, defs, exports, includedFrom)
                 + computeRelativePath(dirname(includedFrom), dirname(templateFilePath))
             ).replace(/^\.\//,'');
         await processTemplate(templateFilePath, includeDefs, exports);
-        return "include " + templatePathToMakefilePath(statement.file);
+        return "include " + templatePathToMakefilePath(substitutedFilePath);
     }
-    return statement.statement;
+    return substitute(statement.statement, defs);
 }
 
 /**
@@ -262,9 +263,10 @@ function consumeMatch(regex, lines)
  *
  * @param {string|null} rootMakefile
  * @param {string[]|null|undefined} biomakeArgs
+ * @param {boolean} preprocessOnly
  * @return {Promise<number>}
  */
-async function probiotic(rootMakefile, biomakeArgs)
+async function probiotic(rootMakefile, biomakeArgs, preprocessOnly)
 {
     const resolvedRootTemplate = await resolveInclude(
         makefilePathToTemplatePath(rootMakefile),
@@ -278,7 +280,7 @@ async function probiotic(rootMakefile, biomakeArgs)
         },
         {}
     );
-    return await runBiomake(rootMakefile, biomakeArgs);
+    return preprocessOnly ? 0 : await runBiomake(rootMakefile, biomakeArgs);
 }
 
 /**
@@ -302,6 +304,7 @@ async function runBiomake(makefilePath, biomakeArgs)
  */
 export default async function main(argc, argv)
 {
+    let preprocessOnly = false;
     const defaults = {
         ['-Q']: 'poolq',
         ['-j']: '8',
@@ -316,6 +319,10 @@ export default async function main(argc, argv)
     argv.shift();
     while(argv.length) {
         let arg = argv.shift();
+        if (arg === '--preprocess') {
+            preprocessOnly = true;
+            continue;
+        }
         if (arg in defaults) {
             let overriddenValue = overrides[arg] = argv.shift();
             let convertedValue = convertedOverrides[arg] = convertArg(arg, overriddenValue);
@@ -327,7 +334,7 @@ export default async function main(argc, argv)
     for(let k of Object.getOwnPropertyNames(convertedOverrides).reverse()) {
         biomakeArgs.unshift(k, convertedOverrides[k]);
     }
-    return await probiotic(overrides['-f'], biomakeArgs);
+    return await probiotic(overrides['-f'], biomakeArgs, preprocessOnly);
 }
 
 /**
