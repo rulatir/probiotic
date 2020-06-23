@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --experimental-modules
+#!/usr/bin/node --experimental-modules
 
 import main from "./src/probiotic.js";
 
