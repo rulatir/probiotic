@@ -23,6 +23,13 @@ Simple invocation without arguments reads `Makefile.pb` in the current directory
 `Biomakefile`s are regenerated upon every invocation of `probiotic`. Don't commit them to
 version control.
 
+### Multiple files
+
+Each `include` statement in `Makefile.pb` that resolves to an existing file relatively to
+the directory of the current file results in also preprocessing the `included` file
+recursively; the resulting `Biomakefile` is written beside the `include`d file, and
+the `include` statement itself is altered accordingly in preprocessed output.
+
 ### `§`-variables
 
 `probiotic` has a rudimentary templating capability: it lets you define special variables that are expanded
