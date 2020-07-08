@@ -236,13 +236,58 @@ function parseInclude(lines)
  */
 function parseDefine(lines)
 {
-    const matches = consumeMatch(/^((?:export\s+)?)([_A-Za-z][_0-9A-Za-z]*)§\s*=\s*(.*)$/, lines);
+    const matches = consumeMatch(/^((?:(?:export|define)\s+)?)([_A-Za-z][_0-9A-Za-z]*)§\s*=\s*(.*)$/, lines);
     if (null===matches) return null;
     let value = matches[3];
+    let shouldExport = /^export\s+$/.test(matches[1]);
+    let isDefine = /^define\s+$/.test(matches[1]);
+    if(isDefine) {
+        [value, shouldExport] = completeDefine(value, lines);
+    }
+    else {
+        value = completeMultiline(value, lines);
+    }
+    return new DefineStatement(matches[2], trim(value," \t\r\n"), shouldExport);
+}
+
+/**
+ *
+ * @param {string} value
+ * @param {string[]} lines
+ * @return {string}
+ */
+function completeMultiline(value, lines)
+{
     while(lines.length && "\\"===value.substr(value.length-1)) {
         value = value.substr(0,value.length-1)+"\n"+lines.shift();
     }
-    return new DefineStatement(matches[2], trim(value), matches[1].length > 0);
+    return value;
+}
+
+/**
+ *
+ * @param {string} value
+ * @param {string[]} lines
+ * @return {string[]}
+ */
+function completeDefine(value, lines)
+{
+    let acceptedLines = [value];
+    let shouldExport = false;
+    while(lines.length) {
+        if(/^endef\s*$/.test(lines[0])) {
+            if(/^export\s*$/.test(acceptedLines[acceptedLines.length-1])) {
+                acceptedLines.pop();
+                shouldExport = true;
+            }
+            lines.shift();
+            return [acceptedLines.join("\n"), shouldExport];
+        }
+        else {
+            acceptedLines.push(lines.shift());
+        }
+    }
+    throw "Unterminated define/endef";
 }
 
 /**
