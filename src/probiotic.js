@@ -4,6 +4,8 @@ import {
     trim
 } from "./polyfills.js";
 import { IncludeStatement, DefineStatement, TextStatement } from "./statement.js";
+import Location from "./location.js";
+import UndefinedProbioticVariable from "./undefined-probiotic-variable.js";
 
 
 
@@ -12,11 +14,12 @@ import { IncludeStatement, DefineStatement, TextStatement } from "./statement.js
  * @param {string} templateFilePath
  * @param {object} defs
  * @param {object} exports
+ * @param {?IncludeStatement} includedBy
  */
-async function processTemplate(templateFilePath, defs, exports)
+async function processTemplate(templateFilePath, defs, exports,includedBy)
 {
     const result = [];
-    const statements = await parseTemplate(templateFilePath);
+    const statements = await parseTemplate(templateFilePath, includedBy);
     for(let statement of statements) {
         if (statement instanceof IncludeStatement) {
             let exported = {};
@@ -33,7 +36,7 @@ async function processTemplate(templateFilePath, defs, exports)
             }
         }
         else if (statement instanceof TextStatement) {
-            result.push(processText(coerceToArray(statement.text), defs));
+            result.push(processText(coerceToArray(statement.text), defs, statement));
         }
     }
     await storeResult(templateFilePath, result);
@@ -43,11 +46,12 @@ async function processTemplate(templateFilePath, defs, exports)
  *
  * @param {string[]} text
  * @param {object} defs
+ * @param {?TextStatement} textStatement
  * @return {string[]}
  */
-function processText(text, defs)
+function processText(text, defs,textStatement)
 {
-    return text.map(textLine => substitute(textLine, defs));
+    return text.map(textLine => substitute(textLine, defs, textStatement));
 }
 
 /**
@@ -66,15 +70,21 @@ function substituteRHS(text, defs)
 /**
  * @param {string} text
  * @param {object} defs
+ * @param {?TextStatement} textStatement
  * @return {string}
  */
-function substitute(text, defs)
+function substitute(text, defs,textStatement
+)
 {
     return text.replace(
         /\$\(([_A-Za-z][_0-9A-Za-z]*§)\)/g,
         (match, key) => {
             if (!(match in defs)) {
-                throw new Error(`Undefined §-variable ${key}`);
+                throw (
+                    textStatement
+                        ? new UndefinedProbioticVariable($key, textStatement)
+                        : new Error(`Undefined §-variable ${key}`)
+                );
             }
             return substitute(defs[match], defs)
         }
@@ -102,7 +112,7 @@ async function processInclude(statement, defs, exports, includedFrom)
                 + '/'
                 + computeRelativePath(dirname(includedFrom), dirname(templateFilePath))
             ).replace(/^\.\//,'');
-        await processTemplate(templateFilePath, includeDefs, exports);
+        await processTemplate(templateFilePath, includeDefs, exports, statement);
         return "include " + templatePathToMakefilePath(substitutedFilePath);
     }
     return substitute(statement.statement, defs);
@@ -156,23 +166,31 @@ async function storeResult(templateFilePath, result)
 /**
  *
  * @param {string} templateFilePath
+ * @param {?IncludeStatement} includedBy
  * @return {Promise<Statement[]>}
  */
-async function parseTemplate(templateFilePath)
+async function parseTemplate(templateFilePath,includedBy)
 {
     const result = [];
     const lines = await loadTemplate(templateFilePath);
     const text = [];
+    const originalLineCount=lines.length;
+    const fileLocation = new Location(templateFilePath,1);
+    let textLocation = null;
     while(lines.length) {
-        let statement = parseInclude(lines) || parseDefine(lines);
+        let statementLocation = fileLocation.withLine(originalLineCount - lines.length + 1);
+        textLocation = textLocation | statementLocation;
+        let statement = parseInclude(lines, statementLocation, includedBy) || parseDefine(lines, statementLocation, includedBy);
         if (statement) {
-            flushText(result, text);
+            flushText(result, text, textLocation, includedBy);
+            textLocation = null;
             result.push(statement);
             continue;
         }
         text.push(lines.shift());
     }
-    flushText(result, text);
+    flushText(result, text, textLocation, includedBy);
+    textLocation = null;
     return result;
 }
 
@@ -180,10 +198,12 @@ async function parseTemplate(templateFilePath)
  *
  * @param {Statement[]} result
  * @param {string[]} text
+ * @param {?Location} location
+ * @param {?IncludeStatement} includedFrom
  */
-function flushText(result, text)
+function flushText(result, text, location,includedFrom)
 {
-    result.push(new TextStatement(text.slice()));
+    result.push(new TextStatement(text.slice(),location,includedFrom));
     text.length=0;
 }
 
@@ -220,21 +240,25 @@ function templatePathToMakefilePath(templateFilePath)
 /**
  *
  * @param {string[]} lines
+ * @param {?Location} location
+ * @param {?IncludeStatement} includedFrom
  * @return {IncludeStatement|null}
  */
-function parseInclude(lines)
+function parseInclude(lines,location,includedFrom)
 {
     const matches = consumeMatch(/^include\s+(\S.*)$/, lines);
     if (null===matches) return null;
-    return new IncludeStatement(trim(matches[1]), matches[0]);
+    return new IncludeStatement(trim(matches[1]), matches[0],location,includedFrom);
 }
 
 /**
  *
  * @param {string[]} lines
+ * @param {?Location} location
+ * @param {?IncludeStatement} includedFrom
  * @return {DefineStatement|null}
  */
-function parseDefine(lines)
+function parseDefine(lines,location,includedFrom)
 {
     const matches = consumeMatch(/^((?:(?:export|define)\s+)?)([_A-Za-z][_0-9A-Za-z]*)§\s*=\s*(.*)$/, lines);
     if (null===matches) return null;
@@ -247,7 +271,7 @@ function parseDefine(lines)
     else {
         value = completeMultiline(value, lines);
     }
-    return new DefineStatement(matches[2], trim(value," \t\r\n"), shouldExport);
+    return new DefineStatement(matches[2], trim(value," \t\r\n"), shouldExport, location, includedFrom);
 }
 
 /**

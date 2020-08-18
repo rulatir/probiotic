@@ -1,12 +1,30 @@
+import Location from "./location.js";
+
 export class Statement
 {
+    /** @type {?Location} */
+    location;
+
+    /** @type {?IncludeStatement} */
+    includedFrom;
+
     /** @type {string} */
     type;
 
-    /** @param {string} type */
-    constructor(type)
+
+    /** @param {string} type
+     * @param {?Location} location
+     * @param {?IncludeStatement} includedFrom
+     */
+    constructor(type,location, includedFrom)
     {
         this.type=type;
+        this.location = location;
+        this.includedFrom = includedFrom;
+    }
+
+    get locationAsString() {
+        return this.location ? this.location.asString : "<unknown location>"
     }
 }
 
@@ -21,10 +39,12 @@ export class IncludeStatement extends Statement
     /**
      * @param {string} file
      * @param {string} statement
+     * @param {?Location} location
+     * @param {?IncludeStatement} includedFrom
      */
-    constructor(file,statement)
+    constructor(file,statement,location,includedFrom)
     {
-        super("include");
+        super("include",location,includedFrom);
         this.file = file;
         this.statement = statement;
     }
@@ -44,9 +64,11 @@ export class DefineStatement extends Statement
      * @param {string} key
      * @param {string} value
      * @param {boolean} exported
+     * @param {?Location} location
+     * @param {?IncludeStatement} includedFrom
      */
-    constructor(key, value, exported) {
-        super("define");
+    constructor(key, value, exported,location,includedFrom) {
+        super("define",location,includedFrom);
         this.key = key;
         this.value = value;
         this.exported = exported;
@@ -60,9 +82,11 @@ export class TextStatement extends Statement
 
     /**
      * @param {string[]} text
+     * @param {?Location} location
+     * @param {?IncludeStatement} includedFrom
      */
-    constructor(text) {
-        super("text");
+    constructor(text,location,includedFrom) {
+        super("text",location,includedFrom);
         this.text = text;
     }
 }
