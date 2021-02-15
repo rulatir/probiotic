@@ -83,7 +83,7 @@ function substitute(text, defs,textStatement
                 throw (
                     textStatement
                         ? new UndefinedProbioticVariable(key, textStatement)
-                        : new Error(`Undefined §-variable ${key}`)
+                        : new Error(`Undefined §-variable ${key} in text:`+"\n"+text)
                 );
             }
             return substitute(defs[match], defs, textStatement)
