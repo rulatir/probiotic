@@ -70,7 +70,7 @@ function substituteRHS(text, defs)
 /**
  * @param {string} text
  * @param {object} defs
- * @param {?TextStatement} textStatement
+ * @param {TextStatement} [textStatement]
  * @return {string}
  */
 function substitute(text, defs,textStatement
@@ -82,11 +82,11 @@ function substitute(text, defs,textStatement
             if (!(match in defs)) {
                 throw (
                     textStatement
-                        ? new UndefinedProbioticVariable($key, textStatement)
+                        ? new UndefinedProbioticVariable(key, textStatement)
                         : new Error(`Undefined §-variable ${key}`)
                 );
             }
-            return substitute(defs[match], defs)
+            return substitute(defs[match], defs, textStatement)
         }
     )
 }
