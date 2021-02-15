@@ -1,7 +1,7 @@
 {
   "name": "probiotic",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple preprocessor for evoldoers/biomake. Works around lack of support for target-scoped variables.",
   "main": "index.js",
   "files": [
